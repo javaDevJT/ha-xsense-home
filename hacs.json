@@ -1,0 +1,6 @@
+{
+  "name": "X-Sense Home Security",
+  "domains": ["xsense"],
+  "render_readme": true,
+  "homeassistant": "2025.12.0"
+}

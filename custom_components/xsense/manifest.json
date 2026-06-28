@@ -1,0 +1,16 @@
+{
+  "domain": "xsense",
+  "name": "X-Sense Home Security",
+  "codeowners": ["@theosnel"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/javaDevJT/ha-xsense-home",
+  "homekit": {},
+  "integration_type": "hub",
+  "iot_class": "cloud_polling",
+  "quality_scale": "legacy",
+  "requirements": ["python-xsense[async]==0.0.16", "paho-mqtt==2.1.0"],
+  "ssdp": [],
+  "version": "0.1.0",
+  "zeroconf": []
+}
