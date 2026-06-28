@@ -139,6 +139,8 @@ Fix applied:
 - Added a mailbox-specific icon, `mdi:mailbox-up-outline`, for mailbox alarm status.
 - Added regression coverage so `alarm_status` cannot silently return to a hard-coded smoke class.
 - Bumped manifest version to `0.1.4`.
+- Verified commit `c401d6f` passed HACS Action run `28338163794` and Hassfest run `28338163798`.
+- Published `v0.1.4` at `https://github.com/javaDevJT/ha-xsense-home/releases/tag/v0.1.4`.
 
 Follow-up: consider exposing the already-supported `mute` action as a button after live testing with a shared X-Sense account, because pressing it sends a command to the X-Sense cloud.
 
