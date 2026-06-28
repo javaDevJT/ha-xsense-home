@@ -110,6 +110,8 @@ Fix applied:
 - Distinguished Wi-Fi RSSI (`Wi-Fi signal strength`) from RF link quality (`RF signal strength`).
 - Added regression coverage that locks the intended human-facing entity labels.
 - Bumped manifest version to `0.1.3`.
+- Verified commit `40838f6` passed HACS Action run `28337683448` and Hassfest run `28337683444`.
+- Published `v0.1.3` at `https://github.com/javaDevJT/ha-xsense-home/releases/tag/v0.1.3`.
 
 ## Risks And Open Questions
 
