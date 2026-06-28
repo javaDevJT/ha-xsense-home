@@ -95,6 +95,8 @@ Fix applied:
 - Passed `subscription_id` into the `Subscription` constructor.
 - Added regression coverage in `tests/test_repository_layout.py` to catch old six-argument `Subscription(...)` calls.
 - Bumped manifest version to `0.1.2`.
+- Verified commit `33e8fa5` passed HACS Action run `28337208099` and Hassfest run `28337208112`.
+- Published `v0.1.2` at `https://github.com/javaDevJT/ha-xsense-home/releases/tag/v0.1.2`.
 
 ## Risks And Open Questions
 
