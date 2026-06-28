@@ -67,6 +67,8 @@ class XSenseMQTT:
         )
         self._wildcard_subscriptions: set[Subscription] = set()
         self._retained_topics: defaultdict[Subscription, set[str]] = defaultdict(set)
+        self._subscription_ids: dict[str, int] = {}
+        self._next_subscription_id = 1
 
         self._subscribe_debouncer = EnsureJobAfterCooldown(
             INITIAL_SUBSCRIBE_COOLDOWN, self._async_perform_subscriptions
@@ -452,6 +454,13 @@ class XSenseMQTT:
             f"'{msg.topic}': '{msg.payload}'"  # type: ignore[str-bytes-safe]
         )
 
+    def _subscription_id_for_topic(self, topic: str) -> int:
+        """Return a stable subscription id for a topic."""
+        if topic not in self._subscription_ids:
+            self._subscription_ids[topic] = self._next_subscription_id
+            self._next_subscription_id += 1
+        return self._subscription_ids[topic]
+
     @callback
     async def async_subscribe(
         self,
@@ -483,7 +492,15 @@ class XSenseMQTT:
         is_simple_match = not ("+" in topic or "#" in topic)
         matcher = None if is_simple_match else _matcher_for_topic(topic)
 
-        subscription = Subscription(topic, is_simple_match, matcher, job, qos, encoding)
+        subscription = Subscription(
+            topic=topic,
+            is_simple_match=is_simple_match,
+            complex_matcher=matcher,
+            job=job,
+            qos=qos,
+            encoding=encoding,
+            subscription_id=self._subscription_id_for_topic(topic),
+        )
 
         self._async_track_subscription(subscription)
         self._matching_subscriptions.cache_clear()

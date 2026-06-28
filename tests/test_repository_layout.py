@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 import unittest
+import ast
 from pathlib import Path
 
 
@@ -68,6 +69,26 @@ class RepositoryLayoutTest(unittest.TestCase):
         self.assertIn("share", readme.lower())
         self.assertIn("restart Home Assistant", readme)
         self.assertTrue(re.search(r"SBS50|XS0B-MR|XP0A-MR", readme), "README should name supported device families")
+
+    def test_mqtt_subscriptions_include_subscription_id(self) -> None:
+        mqtt_path = COMPONENT_DIR / "mqtt.py"
+        tree = ast.parse(mqtt_path.read_text(encoding="utf-8"))
+
+        bad_calls = []
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            if not isinstance(node.func, ast.Name) or node.func.id != "Subscription":
+                continue
+            keyword_names = {keyword.arg for keyword in node.keywords}
+            if len(node.args) < 7 and "subscription_id" not in keyword_names:
+                bad_calls.append(node.lineno)
+
+        self.assertEqual(
+            bad_calls,
+            [],
+            "Subscription construction must include subscription_id for current Home Assistant",
+        )
 
 
 if __name__ == "__main__":

@@ -79,6 +79,23 @@ Fix applied:
 - Verified the corrected commit `c82ae50` passed HACS Action run `28336801298` and Hassfest run `28336801289`.
 - Published `v0.1.1` at `https://github.com/javaDevJT/ha-xsense-home/releases/tag/v0.1.1`.
 
+## 2026-06-28 Runtime MQTT Subscription Fix
+
+Home Assistant runtime error from the custom integration:
+
+```text
+TypeError: Subscription.__init__() missing 1 required positional argument: 'subscription_id'
+```
+
+Root cause: the imported X-Sense MQTT bridge constructed `homeassistant.components.mqtt.client.Subscription` using the older six-argument shape. Current Home Assistant requires a seventh `subscription_id` field. Current Home Assistant core generates that ID per topic using its MQTT subscription ID generator before constructing `Subscription`.
+
+Fix applied:
+
+- Added local topic-to-subscription-id tracking in `custom_components/xsense/mqtt.py`.
+- Passed `subscription_id` into the `Subscription` constructor.
+- Added regression coverage in `tests/test_repository_layout.py` to catch old six-argument `Subscription(...)` calls.
+- Bumped manifest version to `0.1.2`.
+
 ## Risks And Open Questions
 
 - Official Home Assistant compatibility may refer to selected base-station devices only; direct Wi-Fi devices may behave differently.
