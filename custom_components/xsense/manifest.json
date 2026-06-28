@@ -12,6 +12,6 @@
   "quality_scale": "legacy",
   "requirements": ["python-xsense[async]==0.0.16", "paho-mqtt==2.1.0"],
   "ssdp": [],
-  "version": "0.1.2",
+  "version": "0.1.3",
   "zeroconf": []
 }

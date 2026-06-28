@@ -42,6 +42,7 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     XSenseSensorEntityDescription(
         key="wifi_rssi",
         translation_key="wifi_rssi",
+        name="Wi-Fi signal strength",
         native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
         device_class=SensorDeviceClass.SIGNAL_STRENGTH,
         state_class=SensorStateClass.MEASUREMENT,
@@ -52,6 +53,7 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     XSenseSensorEntityDescription(
         key="wifi_ssid",
         translation_key="wifi_ssid",
+        name="Wi-Fi SSID",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:access-point-network",
         exists_fn=lambda entity: "ssid" in entity.data,
@@ -60,6 +62,7 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     XSenseSensorEntityDescription(
         key="sw_version",
         translation_key="sw_version",
+        name="Software version",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:chip",
         exists_fn=lambda device: "sw" in device.data,
@@ -68,6 +71,7 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     XSenseSensorEntityDescription(
         key="wifi_sw",
         translation_key="wifi_sw",
+        name="Wi-Fi module firmware",
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:chip",
         exists_fn=lambda device: "wifi_sw" in device.data,
@@ -85,6 +89,7 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     XSenseSensorEntityDescription(
         key="ip",
         translation_key="ip_address",
+        name="IP address",
         icon="mdi:ip-network-outline",
         entity_category=EntityCategory.DIAGNOSTIC,
         exists_fn=lambda device: "ip" in device.data,
@@ -93,6 +98,7 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     XSenseSensorEntityDescription(
         key="alarm_vol",
         translation_key="alarm_vol",
+        name="Alarm volume",
         native_unit_of_measurement=PERCENTAGE,
         icon="mdi:volume-high",
         state_class=SensorStateClass.MEASUREMENT,
@@ -102,6 +108,7 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     XSenseSensorEntityDescription(
         key="voice_vol",
         translation_key="voice_vol",
+        name="Voice volume",
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:volume-high",
@@ -110,6 +117,7 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="co",
+        name="Carbon monoxide",
         native_unit_of_measurement=CONCENTRATION_PARTS_PER_MILLION,
         device_class=SensorDeviceClass.CO,
         state_class=SensorStateClass.MEASUREMENT,
@@ -118,6 +126,7 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="temperature",
+        name="Temperature",
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         state_class=SensorStateClass.MEASUREMENT,
@@ -126,6 +135,7 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="humidity",
+        name="Humidity",
         native_unit_of_measurement=PERCENTAGE,
         device_class=SensorDeviceClass.HUMIDITY,
         state_class=SensorStateClass.MEASUREMENT,
@@ -134,6 +144,7 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
     ),
     XSenseSensorEntityDescription(
         key="battery",
+        name="Battery",
         native_unit_of_measurement=PERCENTAGE,
         device_class=SensorDeviceClass.BATTERY,
         state_class=SensorStateClass.MEASUREMENT,
@@ -147,7 +158,7 @@ SENSORS: tuple[XSenseSensorEntityDescription, ...] = (
         device_class=SensorDeviceClass.ENUM,
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:signal",
-        name="Signal strength",
+        name="RF signal strength",
         options=STATE_SIGNAL,
         value_fn=lambda device: STATE_SIGNAL[int(device.data["rfLevel"])],
         exists_fn=lambda device: "rfLevel" in device.data,

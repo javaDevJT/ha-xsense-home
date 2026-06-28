@@ -37,6 +37,7 @@ SENSORS: tuple[XSenseButtonEntityDescription, ...] = (
     XSenseButtonEntityDescription(
         key="test",
         translation_key="test",
+        name="Test alarm",
         entity_category=EntityCategory.CONFIG,
         exists_fn=lambda entity, xsense: xsense.has_action(entity, "test"),
         press_fn=partial(run_action, action="test"),

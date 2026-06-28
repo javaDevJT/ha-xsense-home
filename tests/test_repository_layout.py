@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+import ast
 import json
 import re
 import unittest
-import ast
 from pathlib import Path
 
 
@@ -15,6 +15,37 @@ COMPONENT_DIR = PROJECT_ROOT / "custom_components" / "xsense"
 
 class RepositoryLayoutTest(unittest.TestCase):
     """Verify the repository is shaped like an installable HACS integration."""
+
+    def _description_names(self, file_name: str, call_name: str) -> dict[str, str | None]:
+        tree = ast.parse((COMPONENT_DIR / file_name).read_text(encoding="utf-8"))
+        descriptions: dict[str, str | None] = {}
+
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            if not isinstance(node.func, ast.Name) or node.func.id != call_name:
+                continue
+
+            kwargs = {
+                keyword.arg: keyword.value
+                for keyword in node.keywords
+                if keyword.arg is not None
+            }
+            key_node = kwargs.get("key")
+            if not isinstance(key_node, ast.Constant) or not isinstance(
+                key_node.value, str
+            ):
+                continue
+
+            name_node = kwargs.get("name")
+            descriptions[key_node.value] = (
+                name_node.value
+                if isinstance(name_node, ast.Constant)
+                and isinstance(name_node.value, str)
+                else None
+            )
+
+        return descriptions
 
     def test_custom_component_manifest_is_hacs_ready(self) -> None:
         manifest_path = COMPONENT_DIR / "manifest.json"
@@ -88,6 +119,48 @@ class RepositoryLayoutTest(unittest.TestCase):
             bad_calls,
             [],
             "Subscription construction must include subscription_id for current Home Assistant",
+        )
+
+    def test_entity_descriptions_have_readable_names(self) -> None:
+        expected_sensor_names = {
+            "wifi_rssi": "Wi-Fi signal strength",
+            "wifi_ssid": "Wi-Fi SSID",
+            "sw_version": "Software version",
+            "wifi_sw": "Wi-Fi module firmware",
+            "ip": "IP address",
+            "alarm_vol": "Alarm volume",
+            "voice_vol": "Voice volume",
+            "co": "Carbon monoxide",
+            "temperature": "Temperature",
+            "humidity": "Humidity",
+            "battery": "Battery",
+            "rf_level": "RF signal strength",
+        }
+        expected_binary_sensor_names = {
+            "is_life_end": "End of life",
+            "alarm_status": "Alarm detected",
+            "mute_status": "Muted",
+            "activate": "Alarm active",
+            "door": "Door",
+            "connected": "Connected",
+        }
+        expected_button_names = {
+            "test": "Test alarm",
+        }
+
+        self.assertEqual(
+            self._description_names("sensor.py", "XSenseSensorEntityDescription"),
+            expected_sensor_names,
+        )
+        self.assertEqual(
+            self._description_names(
+                "binary_sensor.py", "XSenseBinarySensorEntityDescription"
+            ),
+            expected_binary_sensor_names,
+        )
+        self.assertEqual(
+            self._description_names("button.py", "XSenseButtonEntityDescription"),
+            expected_button_names,
         )
 
 

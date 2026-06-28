@@ -98,6 +98,19 @@ Fix applied:
 - Verified commit `33e8fa5` passed HACS Action run `28337208099` and Hassfest run `28337208112`.
 - Published `v0.1.2` at `https://github.com/javaDevJT/ha-xsense-home/releases/tag/v0.1.2`.
 
+## 2026-06-28 Entity Naming Fix
+
+Home Assistant device screenshots showed repeated or generic entity labels such as `Base Station`, `Smart Mailbox Alarm`, and `Smoke` where the metric/action name should have been visible.
+
+Root cause: several entity descriptions relied only on `translation_key`. In the tested custom integration install, those translations were not applied to the device page labels, so Home Assistant fell back to the device name or device-class default. Descriptions that already had explicit `name=` values rendered more clearly.
+
+Fix applied:
+
+- Added explicit `name=` values for sensor, binary sensor, and button descriptions.
+- Distinguished Wi-Fi RSSI (`Wi-Fi signal strength`) from RF link quality (`RF signal strength`).
+- Added regression coverage that locks the intended human-facing entity labels.
+- Bumped manifest version to `0.1.3`.
+
 ## Risks And Open Questions
 
 - Official Home Assistant compatibility may refer to selected base-station devices only; direct Wi-Fi devices may behave differently.

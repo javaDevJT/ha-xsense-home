@@ -36,6 +36,7 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
     XSenseBinarySensorEntityDescription(
         key="is_life_end",
         translation_key="is_life_end",
+        name="End of life",
         device_class=BinarySensorDeviceClass.PROBLEM,
         icon="mdi:timelapse",
         exists_fn=lambda entity: "isLifeEnd" in entity.data,
@@ -43,6 +44,7 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
     ),
     XSenseBinarySensorEntityDescription(
         key="alarm_status",
+        name="Alarm detected",
         device_class=BinarySensorDeviceClass.SMOKE,
         exists_fn=lambda entity: "alarmStatus" in entity.data,
         value_fn=lambda entity: entity.data["alarmStatus"],
@@ -50,6 +52,7 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
     XSenseBinarySensorEntityDescription(
         key="mute_status",
         translation_key="mute_status",
+        name="Muted",
         icon="mdi:alarm-light-off",
         exists_fn=lambda entity: "muteStatus" in entity.data,
         value_fn=lambda entity: entity.data["muteStatus"],
@@ -57,6 +60,7 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
     XSenseBinarySensorEntityDescription(
         key="activate",
         translation_key="activate",
+        name="Alarm active",
         icon="mdi:bell-ring",
         exists_fn=lambda entity: "activate" in entity.data,
         value_fn=lambda entity: entity.data["activate"],
@@ -65,7 +69,7 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
         key="door",
         translation_key="door",
         device_class=BinarySensorDeviceClass.DOOR,
-        name="Door Sensor",
+        name="Door",
         value_fn=lambda device: device.data["isOpen"] == "1",
         exists_fn=lambda device: "isOpen" in device.data,
     ),
@@ -74,6 +78,7 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
 MQTTSensor = XSenseBinarySensorEntityDescription(
     key="connected",
     translation_key="connected",
+    name="Connected",
     entity_category=EntityCategory.DIAGNOSTIC,
     icon="mdi:connection",
     exists_fn=lambda entity: isinstance(entity, Station),
