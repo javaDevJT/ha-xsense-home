@@ -8,9 +8,10 @@
   "homekit": {},
   "integration_type": "hub",
   "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/javaDevJT/ha-xsense-home/issues",
   "quality_scale": "legacy",
   "requirements": ["python-xsense[async]==0.0.16", "paho-mqtt==2.1.0"],
   "ssdp": [],
-  "version": "0.1.0",
+  "version": "0.1.1",
   "zeroconf": []
 }

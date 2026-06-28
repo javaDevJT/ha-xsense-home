@@ -62,6 +62,21 @@ The integration is cloud-based. The X-Sense Home Security app API uses AWS Cogni
 
 This pass does not prove live X-Sense authentication, cloud API access, MQTT updates, or Home Assistant runtime behavior.
 
+## 2026-06-28 HACS Validation Fix
+
+The initial `v0.1.0` HACS Action failed three validation checks:
+
+- Repository topics were missing in GitHub.
+- `custom_components/xsense/manifest.json` did not include `issue_tracker`.
+- `hacs.json` included unsupported keys: `domains` and `render_readme`.
+
+Fix applied:
+
+- Added GitHub topics: `home-assistant`, `hacs`, `hacs-integration`, `x-sense`, `xsense`, `smoke-detector`, and `carbon-monoxide`.
+- Added `issue_tracker: https://github.com/javaDevJT/ha-xsense-home/issues` to the integration manifest.
+- Removed unsupported keys from `hacs.json`.
+- Bumped manifest version to `0.1.1` for a corrected HACS test release.
+
 ## Risks And Open Questions
 
 - Official Home Assistant compatibility may refer to selected base-station devices only; direct Wi-Fi devices may behave differently.

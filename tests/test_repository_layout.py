@@ -26,6 +26,7 @@ class RepositoryLayoutTest(unittest.TestCase):
         self.assertEqual(manifest["integration_type"], "hub")
         self.assertEqual(manifest["iot_class"], "cloud_polling")
         self.assertEqual(manifest["requirements"], ["python-xsense[async]==0.0.16", "paho-mqtt==2.1.0"])
+        self.assertEqual(manifest["issue_tracker"], "https://github.com/javaDevJT/ha-xsense-home/issues")
         self.assertRegex(manifest.get("version", ""), r"^\d+\.\d+\.\d+$")
 
     def test_expected_component_files_are_present(self) -> None:
@@ -53,8 +54,9 @@ class RepositoryLayoutTest(unittest.TestCase):
 
         hacs = json.loads(hacs_path.read_text(encoding="utf-8"))
         self.assertEqual(hacs["name"], "X-Sense Home Security")
-        self.assertEqual(hacs["domains"], ["xsense"])
-        self.assertIs(hacs["render_readme"], True)
+        self.assertEqual(hacs.get("homeassistant"), "2025.12.0")
+        self.assertNotIn("domains", hacs)
+        self.assertNotIn("render_readme", hacs)
 
     def test_readme_documents_install_and_account_model(self) -> None:
         readme_path = PROJECT_ROOT / "README.md"
