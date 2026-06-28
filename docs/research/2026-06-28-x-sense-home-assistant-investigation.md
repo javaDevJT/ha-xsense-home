@@ -76,6 +76,8 @@ Fix applied:
 - Added `issue_tracker: https://github.com/javaDevJT/ha-xsense-home/issues` to the integration manifest.
 - Removed unsupported keys from `hacs.json`.
 - Bumped manifest version to `0.1.1` for a corrected HACS test release.
+- Verified the corrected commit `c82ae50` passed HACS Action run `28336801298` and Hassfest run `28336801289`.
+- Published `v0.1.1` at `https://github.com/javaDevJT/ha-xsense-home/releases/tag/v0.1.1`.
 
 ## Risks And Open Questions
 
