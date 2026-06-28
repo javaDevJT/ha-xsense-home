@@ -47,6 +47,32 @@ class RepositoryLayoutTest(unittest.TestCase):
 
         return descriptions
 
+    def _description_keywords(
+        self, file_name: str, call_name: str, key: str
+    ) -> set[str]:
+        tree = ast.parse((COMPONENT_DIR / file_name).read_text(encoding="utf-8"))
+
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            if not isinstance(node.func, ast.Name) or node.func.id != call_name:
+                continue
+
+            kwargs = {
+                keyword.arg: keyword.value
+                for keyword in node.keywords
+                if keyword.arg is not None
+            }
+            key_node = kwargs.get("key")
+            if (
+                isinstance(key_node, ast.Constant)
+                and isinstance(key_node.value, str)
+                and key_node.value == key
+            ):
+                return set(kwargs)
+
+        self.fail(f"{call_name} with key={key!r} was not found in {file_name}")
+
     def test_custom_component_manifest_is_hacs_ready(self) -> None:
         manifest_path = COMPONENT_DIR / "manifest.json"
         self.assertTrue(manifest_path.exists(), "custom component manifest is missing")
@@ -161,6 +187,36 @@ class RepositoryLayoutTest(unittest.TestCase):
         self.assertEqual(
             self._description_names("button.py", "XSenseButtonEntityDescription"),
             expected_button_names,
+        )
+
+    def test_alarm_status_uses_entity_type_specific_presentation(self) -> None:
+        binary_sensor_source = (COMPONENT_DIR / "binary_sensor.py").read_text(
+            encoding="utf-8"
+        )
+        alarm_status_keywords = self._description_keywords(
+            "binary_sensor.py", "XSenseBinarySensorEntityDescription", "alarm_status"
+        )
+
+        self.assertNotIn("device_class", alarm_status_keywords)
+        self.assertIn("device_class_fn", alarm_status_keywords)
+        self.assertIn("icon_fn", alarm_status_keywords)
+        self.assertIn(
+            "EntityType.SMOKE: BinarySensorDeviceClass.SMOKE", binary_sensor_source
+        )
+        self.assertIn("EntityType.CO: BinarySensorDeviceClass.CO", binary_sensor_source)
+        self.assertIn(
+            "EntityType.WATER: BinarySensorDeviceClass.MOISTURE",
+            binary_sensor_source,
+        )
+        self.assertIn(
+            "EntityType.MOTION: BinarySensorDeviceClass.MOTION", binary_sensor_source
+        )
+        self.assertIn(
+            "EntityType.HEAT: BinarySensorDeviceClass.HEAT", binary_sensor_source
+        )
+        self.assertIn("EntityType.MAILBOX: None", binary_sensor_source)
+        self.assertIn(
+            'EntityType.MAILBOX: "mdi:mailbox-up-outline"', binary_sensor_source
         )
 
 

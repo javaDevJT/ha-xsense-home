@@ -7,6 +7,7 @@ from dataclasses import dataclass
 
 from xsense.device import Device
 from xsense.entity import Entity
+from xsense.entity_map import EntityType, entities
 from xsense.station import Station
 
 from homeassistant import config_entries
@@ -30,6 +31,38 @@ class XSenseBinarySensorEntityDescription(BinarySensorEntityDescription):
 
     exists_fn: Callable[[Entity], bool] = lambda _: True
     value_fn: Callable[[Entity], bool]
+    device_class_fn: Callable[[Entity], BinarySensorDeviceClass | None] | None = None
+    icon_fn: Callable[[Entity], str | None] | None = None
+
+
+ALARM_DEVICE_CLASS_BY_ENTITY_TYPE: dict[EntityType, BinarySensorDeviceClass | None] = {
+    EntityType.SMOKE: BinarySensorDeviceClass.SMOKE,
+    EntityType.COMBI: BinarySensorDeviceClass.SMOKE,
+    EntityType.CO: BinarySensorDeviceClass.CO,
+    EntityType.WATER: BinarySensorDeviceClass.MOISTURE,
+    EntityType.MOTION: BinarySensorDeviceClass.MOTION,
+    EntityType.HEAT: BinarySensorDeviceClass.HEAT,
+    EntityType.MAILBOX: None,
+}
+
+ALARM_ICON_BY_ENTITY_TYPE: dict[EntityType, str] = {
+    EntityType.MAILBOX: "mdi:mailbox-up-outline",
+}
+
+
+def xsense_entity_type(entity: Entity) -> EntityType | None:
+    """Return the python-xsense entity type for an entity."""
+    return entities.get(entity.type, {}).get("type")
+
+
+def alarm_device_class(entity: Entity) -> BinarySensorDeviceClass | None:
+    """Return the Home Assistant device class for an alarm status sensor."""
+    return ALARM_DEVICE_CLASS_BY_ENTITY_TYPE.get(xsense_entity_type(entity))
+
+
+def alarm_icon(entity: Entity) -> str | None:
+    """Return a custom icon for an alarm status sensor."""
+    return ALARM_ICON_BY_ENTITY_TYPE.get(xsense_entity_type(entity))
 
 
 SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
@@ -45,7 +78,8 @@ SENSORS: tuple[XSenseBinarySensorEntityDescription, ...] = (
     XSenseBinarySensorEntityDescription(
         key="alarm_status",
         name="Alarm detected",
-        device_class=BinarySensorDeviceClass.SMOKE,
+        device_class_fn=alarm_device_class,
+        icon_fn=alarm_icon,
         exists_fn=lambda entity: "alarmStatus" in entity.data,
         value_fn=lambda entity: entity.data["alarmStatus"],
     ),
@@ -135,14 +169,31 @@ class XSenseBinarySensorEntity(XSenseEntity, BinarySensorEntity):
         super().__init__(coordinator, entity, station_id)
 
     @property
+    def _xsense_entity(self) -> Entity:
+        """Return the current xsense entity backing this Home Assistant entity."""
+        if self._station_id:
+            return self.coordinator.data["devices"][self._dev_id]
+        return self.coordinator.data["stations"][self._dev_id]
+
+    @property
+    def device_class(self) -> BinarySensorDeviceClass | None:
+        """Return the device class for the sensor."""
+        if self.entity_description.device_class_fn:
+            return self.entity_description.device_class_fn(self._xsense_entity)
+        return self.entity_description.device_class
+
+    @property
+    def icon(self) -> str | None:
+        """Return the icon for the sensor."""
+        if self.entity_description.icon_fn:
+            if icon := self.entity_description.icon_fn(self._xsense_entity):
+                return icon
+        return self.entity_description.icon
+
+    @property
     def is_on(self) -> bool | None:
         """Return the state of the sensor."""
-        if self._station_id:
-            device = self.coordinator.data["devices"][self._dev_id]
-        else:
-            device = self.coordinator.data["stations"][self._dev_id]
-
-        return self.entity_description.value_fn(device)
+        return self.entity_description.value_fn(self._xsense_entity)
 
 
 class XSenseMQTTConnectedEntity(XSenseBinarySensorEntity):

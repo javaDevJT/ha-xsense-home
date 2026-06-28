@@ -113,6 +113,35 @@ Fix applied:
 - Verified commit `40838f6` passed HACS Action run `28337683448` and Hassfest run `28337683444`.
 - Published `v0.1.3` at `https://github.com/javaDevJT/ha-xsense-home/releases/tag/v0.1.3`.
 
+## 2026-06-28 Mailbox Alarm Classification Fix
+
+Home Assistant screenshots showed the user's `SMA51` Smart Mailbox Alarm exposing an `Alarm detected` entity with the smoke binary sensor device class. That was not caused by `python-xsense` treating `SMA51` as smoke.
+
+Facts verified during this pass:
+
+- The pinned `python-xsense==0.0.16` package keeps the raw model/category on `Entity.type`; for devices this is the cloud `deviceType` value.
+- `python-xsense==0.0.16` provides `xsense.entity_map.entities`, and `entities["SMA51"]["type"]` is `EntityType.MAILBOX`.
+- The same `SMA51` metadata includes a `mute` action using the mailbox-specific `2nd_appmailmute` topic and `appMailMute` shadow.
+- Current Home Assistant `BinarySensorDeviceClass` includes classes that match X-Sense alarm families such as `SMOKE`, `CO`, `MOISTURE`, `MOTION`, and `HEAT`, but it has no mailbox-specific class.
+
+Root cause: `custom_components/xsense/binary_sensor.py` used one generic `alarm_status` description for every device with `alarmStatus`, and that description hard-coded `device_class=BinarySensorDeviceClass.SMOKE`.
+
+Fix applied:
+
+- Added an X-Sense entity-type lookup using `xsense.entity_map.entities`.
+- Made the `alarm_status` binary sensor choose its Home Assistant device class dynamically:
+  - smoke and combination alarms: `BinarySensorDeviceClass.SMOKE`
+  - CO alarms: `BinarySensorDeviceClass.CO`
+  - water alarms: `BinarySensorDeviceClass.MOISTURE`
+  - motion alarms: `BinarySensorDeviceClass.MOTION`
+  - heat alarms: `BinarySensorDeviceClass.HEAT`
+  - mailbox alarms: no device class
+- Added a mailbox-specific icon, `mdi:mailbox-up-outline`, for mailbox alarm status.
+- Added regression coverage so `alarm_status` cannot silently return to a hard-coded smoke class.
+- Bumped manifest version to `0.1.4`.
+
+Follow-up: consider exposing the already-supported `mute` action as a button after live testing with a shared X-Sense account, because pressing it sends a command to the X-Sense cloud.
+
 ## Risks And Open Questions
 
 - Official Home Assistant compatibility may refer to selected base-station devices only; direct Wi-Fi devices may behave differently.
@@ -135,3 +164,5 @@ Fix applied:
 - `theosnel/homeassistant-core` branch `xsense`: `https://github.com/theosnel/homeassistant-core/tree/xsense/homeassistant/components/xsense`
 - `theosnel/python-xsense`: `https://github.com/theosnel/python-xsense`
 - PyPI `python-xsense`: `https://pypi.org/project/python-xsense/`
+- PyPI `python-xsense==0.0.16` wheel: `https://files.pythonhosted.org/packages/3f/fb/8d1970060f6f8ee08dd1b770f7f9609e99185155178e775a36578ef1439e/python_xsense-0.0.16-py3-none-any.whl`
+- Home Assistant core binary sensor source: `https://github.com/home-assistant/core/blob/dev/homeassistant/components/binary_sensor/__init__.py`
