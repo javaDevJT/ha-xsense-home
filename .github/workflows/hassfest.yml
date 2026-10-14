@@ -9,7 +9,24 @@ on:
 
 jobs:
   hassfest:
-    runs-on: ubuntu-latest
+    runs-on: truenas-ha-xsense-home-storage-8g
     steps:
       - uses: actions/checkout@v4
-      - uses: home-assistant/actions/hassfest@master
+        with:
+          persist-credentials: false
+      - name: Check out trusted validator adapter
+        uses: actions/checkout@v4
+        with:
+          path: .ci/trusted-adapter
+          ref: ${{ github.event.pull_request.base.sha || github.sha }}
+          persist-credentials: false
+      - name: Prepare disk dependency cache
+        run: ci-cache downloads
+      - name: Set up Python for Hassfest
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14.5"
+      - name: Register Hassfest problem matcher
+        run: echo "::add-matcher::$GITHUB_WORKSPACE/.ci/trusted-adapter/.github/scripts/hassfest-problem-matcher.json"
+      - name: Hassfest validation
+        run: bash .ci/trusted-adapter/.github/scripts/ha-validators.sh hassfest
