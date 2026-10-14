@@ -55,7 +55,7 @@ jobs:
             INPUT_CATEGORY=integration
             INPUT_COMMENT=true
           context: ${{ runner.temp }}/hacs-context
-          file: Dockerfile
+          file: ${{ runner.temp }}/hacs-context/Dockerfile
           no-cache: true
           outputs: type=local,dest=${{ runner.temp }}/hacs-result
           platforms: linux/amd64

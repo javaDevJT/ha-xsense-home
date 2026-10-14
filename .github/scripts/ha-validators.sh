@@ -16,40 +16,75 @@ shift
 : "${GITHUB_WORKSPACE:?GITHUB_WORKSPACE must be set by GitHub Actions}"
 : "${RUNNER_TEMP:?RUNNER_TEMP must be set by GitHub Actions}"
 
+hassfest_runtime_tmp=""
+core_source=""
+entrypoint=""
+hassfest_venv=""
+cleanup_hassfest_temp() {
+  local paths=()
+  local path
+  for path in "$hassfest_runtime_tmp" "$core_source" "$entrypoint" "$hassfest_venv"; do
+    [[ -n "$path" ]] && paths+=("$path")
+  done
+  if ((${#paths[@]})); then
+    rm -rf -- "${paths[@]}"
+  fi
+}
+trap cleanup_hassfest_temp EXIT
+
+hassfest_runtime_tmp="$(mktemp -d "$RUNNER_TEMP/hassfest-runtime.XXXXXX")"
+
 if ! python3 -c 'import ctypes.util, sys; sys.exit(0 if ctypes.util.find_library("turbojpeg") else 1)'; then
-  if ! command -v apt-get >/dev/null 2>&1; then
-    echo "Hassfest requires libturbojpeg; no supported apt-get runner found" >&2
+  if ! command -v apt-get >/dev/null 2>&1 || ! command -v dpkg-deb >/dev/null 2>&1; then
+    echo "Hassfest requires libturbojpeg; apt-get and dpkg-deb are required to download and extract it" >&2
     exit 1
   fi
-  if [[ "$(id -u)" -eq 0 ]]; then
-    apt-get update -qq
-    apt_cache_prefix=()
-  elif command -v sudo >/dev/null 2>&1; then
-    sudo -n apt-get update -qq
-    apt_cache_prefix=(sudo -n)
-  else
-    echo "Hassfest requires libturbojpeg; runner has neither root nor passwordless sudo" >&2
-    exit 1
-  fi
-  if apt-cache show libturbojpeg0t64 >/dev/null 2>&1; then
+
+  # Keep apt's package lists and download cache under RUNNER_TEMP so refreshing
+  # signed package metadata and extracting the runtime library never needs sudo
+  # or writes into the runner image's package database.
+  apt_lists="$hassfest_runtime_tmp/apt-lists"
+  apt_cache="$hassfest_runtime_tmp/apt-cache"
+  mkdir -p "$apt_lists/partial" "$apt_cache/archives/partial"
+  apt_options=(-o "Dir::State::lists=$apt_lists" -o "Dir::Cache=$apt_cache")
+  apt-get "${apt_options[@]}" update -qq
+
+  if apt-cache "${apt_options[@]}" show libturbojpeg0t64 >/dev/null 2>&1; then
     turbojpeg_package=libturbojpeg0t64
-  elif apt-cache show libturbojpeg0 >/dev/null 2>&1; then
+  elif apt-cache "${apt_options[@]}" show libturbojpeg0 >/dev/null 2>&1; then
     turbojpeg_package=libturbojpeg0
   else
     echo "No supported apt package provides libturbojpeg" >&2
     exit 1
   fi
-  "${apt_cache_prefix[@]}" apt-get install -y --no-install-recommends "$turbojpeg_package"
+
+  (cd "$hassfest_runtime_tmp" && apt-get "${apt_options[@]}" download "$turbojpeg_package")
+  turbojpeg_deb="$(find "$hassfest_runtime_tmp" -maxdepth 1 -type f -name "${turbojpeg_package}_*.deb" -print -quit)"
+  [[ -n "$turbojpeg_deb" ]] || {
+    echo "apt-get download did not produce a $turbojpeg_package package archive" >&2
+    exit 1
+  }
+  turbojpeg_root="$hassfest_runtime_tmp/turbojpeg-root"
+  mkdir -p "$turbojpeg_root"
+  dpkg-deb --extract "$turbojpeg_deb" "$turbojpeg_root"
+  turbojpeg_library="$(find "$turbojpeg_root" -name 'libturbojpeg.so.0' -print -quit)"
+  [[ -f "$turbojpeg_library" ]] || {
+    echo "Extracted $turbojpeg_package package does not contain libturbojpeg.so.0" >&2
+    exit 1
+  }
+  turbojpeg_library_dir="$(dirname "$turbojpeg_library")"
+  ln -sf "$turbojpeg_library" "$turbojpeg_library_dir/libturbojpeg.so"
+  export LD_LIBRARY_PATH="$turbojpeg_library_dir${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+  export LIBRARY_PATH="$turbojpeg_library_dir${LIBRARY_PATH:+:$LIBRARY_PATH}"
 fi
 python3 -c 'import ctypes.util, sys; sys.exit(0 if ctypes.util.find_library("turbojpeg") else 1)' || {
-  echo "Unable to load libturbojpeg after installing the Hassfest OS dependency" >&2
+  echo "Unable to discover libturbojpeg after preparing the Hassfest OS dependency" >&2
   exit 1
 }
 
 core_source="$(mktemp -d "$RUNNER_TEMP/home-assistant-core.XXXXXX")"
 entrypoint="$(mktemp "$RUNNER_TEMP/hassfest-entrypoint.XXXXXX")"
 hassfest_venv="$(mktemp -d "$RUNNER_TEMP/hassfest-venv.XXXXXX")"
-trap 'rm -rf -- "$core_source" "$entrypoint" "$hassfest_venv"' EXIT
 
 git init -q "$core_source"
 git -C "$core_source" remote add origin "$CORE_REPOSITORY"
