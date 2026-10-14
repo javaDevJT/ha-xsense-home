@@ -40,28 +40,82 @@ if ! python3 -c 'import ctypes.util, sys; sys.exit(0 if ctypes.util.find_library
     exit 1
   fi
 
-  # Keep apt's package lists and download cache under RUNNER_TEMP so refreshing
-  # signed package metadata and extracting the runtime library never needs sudo
-  # or writes into the runner image's package database.
-  apt_lists="$hassfest_runtime_tmp/apt-lists"
-  apt_cache="$hassfest_runtime_tmp/apt-cache"
-  mkdir -p "$apt_lists/partial" "$apt_cache/archives/partial"
-  apt_options=(-o "Dir::State::lists=$apt_lists" -o "Dir::Cache=$apt_cache")
-  apt-get "${apt_options[@]}" update -qq
+  # Apt's system docker-clean hook writes under /var/cache/apt, which is not
+  # writable by this runner. Load a private configuration before apt reads its
+  # host fragments, while retaining the host's signed source and keyring files.
+  apt_state="$hassfest_runtime_tmp/apt-state"
+  apt_config_parts="$hassfest_runtime_tmp/apt-config-parts"
+  apt_config="$hassfest_runtime_tmp/apt.conf"
+  apt_lists="$apt_state/lists"
+  apt_extended_states="$apt_state/extended_states"
+  apt_archives="$hassfest_runtime_tmp/apt-archives"
+  apt_pkg_cache="$hassfest_runtime_tmp/apt-pkgcache.bin"
+  apt_srcpkg_cache="$hassfest_runtime_tmp/apt-srcpkgcache.bin"
+  apt_logs="$hassfest_runtime_tmp/apt-logs"
+  mkdir -p "$apt_config_parts" "$apt_lists/partial" "$apt_archives/partial" "$apt_logs"
+  python3 - "$apt_config" "$apt_config_parts" "$apt_lists" "$apt_extended_states" \
+    "$apt_archives" "$apt_pkg_cache" "$apt_srcpkg_cache" "$apt_logs" <<'PY'
+import json
+import os
+from pathlib import Path
+import sys
 
-  if apt-cache "${apt_options[@]}" show libturbojpeg0t64 >/dev/null 2>&1; then
-    turbojpeg_package=libturbojpeg0t64
-  elif apt-cache "${apt_options[@]}" show libturbojpeg0 >/dev/null 2>&1; then
-    turbojpeg_package=libturbojpeg0
-  else
-    echo "No supported apt package provides libturbojpeg" >&2
+destination, config_parts, lists, extended_states, archives, pkg_cache, srcpkg_cache, logs = sys.argv[1:]
+settings = [
+    ("Dir::Etc::Main", "/dev/null"),
+    ("Dir::Etc::Parts", config_parts),
+    ("Dir::State::status", "/var/lib/dpkg/status"),
+    ("Dir::State::lists", lists + os.sep),
+    ("Dir::State::extended_states", extended_states),
+    ("Dir::Cache::archives", archives + os.sep),
+    ("Dir::Cache::pkgcache", pkg_cache),
+    ("Dir::Cache::srcpkgcache", srcpkg_cache),
+    ("Dir::Log", logs + os.sep),
+    ("Debug::NoLocking", "1"),
+]
+Path(destination).write_text(
+    "".join(f"{name} {json.dumps(value)};\n" for name, value in settings),
+    encoding="utf-8",
+)
+PY
+  apt_options=(-o "Dir::State::status=/var/lib/dpkg/status" \
+    -o "Dir::State::lists=$apt_lists/" \
+    -o "Dir::State::extended_states=$apt_extended_states" \
+    -o "Dir::Cache::archives=$apt_archives/" \
+    -o "Dir::Cache::pkgcache=$apt_pkg_cache" \
+    -o "Dir::Cache::srcpkgcache=$apt_srcpkg_cache" \
+    -o "Dir::Log=$apt_logs/" \
+    -o "Debug::NoLocking=1")
+  APT_CONFIG="$apt_config" apt-get "${apt_options[@]}" update -qq
+
+  turbojpeg_package=""
+  turbojpeg_version=""
+  for candidate_package in libturbojpeg0t64 libturbojpeg0 libturbojpeg; do
+    printf 'Signed apt policy for %s:\n' "$candidate_package"
+    turbojpeg_policy="$(APT_CONFIG="$apt_config" apt-cache "${apt_options[@]}" policy "$candidate_package")"
+    printf '%s\n' "$turbojpeg_policy"
+    candidate_version="$(awk '/^[[:space:]]*Candidate:/ { print $2; exit }' <<<"$turbojpeg_policy")"
+    if [[ -n "$candidate_version" && "$candidate_version" != "(none)" ]]; then
+      turbojpeg_package="$candidate_package"
+      turbojpeg_version="$candidate_version"
+      break
+    fi
+  done
+  if [[ -z "$turbojpeg_package" ]]; then
+    echo "Signed apt indexes have no candidate for libturbojpeg0t64, libturbojpeg0, or libturbojpeg" >&2
     exit 1
   fi
+  printf 'Selected libturbojpeg package: %s Candidate: %s\n' "$turbojpeg_package" "$turbojpeg_version"
 
-  (cd "$hassfest_runtime_tmp" && apt-get "${apt_options[@]}" download "$turbojpeg_package")
+  (cd "$hassfest_runtime_tmp" && APT_CONFIG="$apt_config" apt-get "${apt_options[@]}" download "$turbojpeg_package")
   turbojpeg_deb="$(find "$hassfest_runtime_tmp" -maxdepth 1 -type f -name "${turbojpeg_package}_*.deb" -print -quit)"
   [[ -n "$turbojpeg_deb" ]] || {
     echo "apt-get download did not produce a $turbojpeg_package package archive" >&2
+    exit 1
+  }
+  downloaded_turbojpeg_version="$(dpkg-deb --field "$turbojpeg_deb" Version)"
+  [[ "$downloaded_turbojpeg_version" == "$turbojpeg_version" ]] || {
+    echo "Downloaded $turbojpeg_package version $downloaded_turbojpeg_version does not match apt candidate $turbojpeg_version" >&2
     exit 1
   }
   turbojpeg_root="$hassfest_runtime_tmp/turbojpeg-root"
@@ -76,11 +130,13 @@ if ! python3 -c 'import ctypes.util, sys; sys.exit(0 if ctypes.util.find_library
   ln -sf "$turbojpeg_library" "$turbojpeg_library_dir/libturbojpeg.so"
   export LD_LIBRARY_PATH="$turbojpeg_library_dir${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
   export LIBRARY_PATH="$turbojpeg_library_dir${LIBRARY_PATH:+:$LIBRARY_PATH}"
+  python3 - "$turbojpeg_library" <<'PY'
+import ctypes
+import sys
+
+ctypes.CDLL(sys.argv[1])
+PY
 fi
-python3 -c 'import ctypes.util, sys; sys.exit(0 if ctypes.util.find_library("turbojpeg") else 1)' || {
-  echo "Unable to discover libturbojpeg after preparing the Hassfest OS dependency" >&2
-  exit 1
-}
 
 core_source="$(mktemp -d "$RUNNER_TEMP/home-assistant-core.XXXXXX")"
 entrypoint="$(mktemp "$RUNNER_TEMP/hassfest-entrypoint.XXXXXX")"
@@ -129,6 +185,9 @@ UV_EXTRA_INDEX_URL="" "$venv_uv" pip install --python "$venv_python" --no-build 
 UV_EXTRA_INDEX_URL="$HA_WHEEL_INDEX" "$venv_uv" pip install --python "$venv_python" --no-build \
   -c "$core_source/homeassistant/package_constraints.txt" \
   -r "$core_source/requirements.txt"
+# Validate the pinned native dependency, including PyTurboJPEG 1.8.3's
+# LD_LIBRARY_PATH fallback when the library was extracted into RUNNER_TEMP.
+"$venv_python" -c 'from turbojpeg import TurboJPEG; TurboJPEG()'
 
 # Keep the Core Docker entrypoint's manifest discovery and invocation byte-for-byte;
 # only point its hard-coded image path at this pinned source checkout.
