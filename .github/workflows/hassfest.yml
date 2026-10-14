@@ -26,6 +26,17 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.14.5"
+      - name: Set up isolated Hassfest BuildKit
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          cache-binary: false
+          driver: remote
+          endpoint: tcp://buildkit:1234
+          driver-opts: |
+            cacert=/run/buildkit/tls/ca.pem
+            cert=/run/buildkit/tls/client.pem
+            key=/run/buildkit/tls/client.key
+
       - name: Register Hassfest problem matcher
         run: echo "::add-matcher::$GITHUB_WORKSPACE/.ci/trusted-adapter/.github/scripts/hassfest-problem-matcher.json"
       - name: Hassfest validation
